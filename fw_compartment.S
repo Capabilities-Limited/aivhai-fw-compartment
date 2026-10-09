@@ -36,6 +36,20 @@
 #define MSECCFG_CRE     (1 << 3)
 
 .section .data
+.balign 64
+.globl tohost
+.type tohost, %object
+tohost:
+    .dword 0
+.size tohost, . - tohost
+
+.balign 64
+.globl fromhost
+.type fromhost, %object
+fromhost:
+    .dword 0
+.size fromhost, . - fromhost
+
 .balign 16
 .globl cheri_infinite_cap
 .type  cheri_infinite_cap, %object
