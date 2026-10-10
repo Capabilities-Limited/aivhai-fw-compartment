@@ -127,6 +127,12 @@ compartment_setup:
 	li t0, __CHERI_CAP_PERMISSION_ACCESS_SYSTEM_REGISTERS__
 	ypermc t1, t1, t0
 #endif
+	# XXX We could strip all permissions except RWXC, but we leave them
+	# enabled here so the compartment can exercise all purecap scenarios and
+	# RVY experiments for validation. These permissions provide authority
+	# within the compartment's bounds, including self-modification. They
+	# should not grant access outside those bounds, provided the architecture
+	# correctly enforces capability tags, bounds, and permission monotonicity.
 
 	ymv ra, t1
 
@@ -172,12 +178,24 @@ compartment_setup:
 	csrw sscratch, c0
 	csrw stidc, c0
 	csrw utidc, c0
+
+	# XXX Other state could also be cleared, including FPU and vector
+	# registers and counters. This demo does not place sensitive information
+	# in that state before entry, so we do not clear it here. The demo runs
+	# to completion without context switching or interrupts. This assumption
+	# should be revisited if the demo is extended or reused in another context.
 #endif
 
 #if !defined(AIVHAI_VULN_DDC)
 	csrw ddc, c0
 #endif
 
+	# XXX Side-channel and timing attacks are outside this demo's threat
+	# model. We do not scrub microarchitectural state such as TLBs, caches,
+	# or branch predictors. This demo aims to prevent unauthorised memory
+	# accesses outside the compartment through CHERI bounds and permissions;
+	# it does not claim to prevent information leaks through timing or other
+	# side channels.
 ###5 Jump to a compartment
 	######################################################################
 	# Jump to the compartment
@@ -192,6 +210,11 @@ compartment_return:
 
 ## Actual compartment content (ELF/bin, code, data, etc)
 .section .compartment_bits, "awx", %progbits
+# Pad for convenience to help make large compartment bounds representable.
+# Exact representability still depends on the compartment's base and size.
+# Setting bounds that cannot be represented exactly may invalidate the
+# capability. The padding forms part of the compartment's authorised memory
+# and is not a protected asset.
 .balign 1024*1024
 .globl compartment_enter
 compartment_enter:
