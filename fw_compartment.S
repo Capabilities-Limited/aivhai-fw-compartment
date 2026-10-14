@@ -86,8 +86,29 @@ _start:
 .balign 4
 .globl compartment_trap
 compartment_trap:
+#if defined(AIVHAI_EHANDLER_MEPC_PLUS_4)
+	csrrw t0, mscratch, t0
+	csrr t0, mepc
+	# XXX This configuration advances the saved PC by exactly four bytes.
+	# It does not decode instruction length, so it may skip incorrectly for
+	# compressed instructions. A separate configuration could support them.
+	yaddi t0, t0, 4
+	# XXX Advancing the saved PCC preserves its bounds and permissions,
+	# but may produce an out-of-bounds address or clear its tag.
+	# Returning to an unusable target may cause another trap. We do not
+	# guarantee recovery or termination in that case. No broader capability
+	# authority is intentionally granted to the compartment.
+	csrw mepc, t0
+	csrrw t0, mscratch, t0
+	mret
+#else
+	# Default nop trap handler.
 	wfi
 	j compartment_trap
+#endif
+compartment_trap_end:
+.size compartment_trap, . -compartment_trap
+
 ######################################################################### #
 
 ######################################################################### #
@@ -98,7 +119,24 @@ compartment_setup:
 	csrw  CSR_MIE, zero
 
 ###2 Setup mtvec
+	#### lly will derive a t0 capability from PCC, which is infinite at this point
 	lly   t0, compartment_trap
+#if !defined(AIVHAI_EHANDLER_UNRESTRICTED)
+	#### Bound the trap handler
+	lly t1, compartment_trap_end
+	sub t1, t1, t0
+	ybndsw t0, t0, t1
+#if defined(AIVHAI_EHANDLER_MEPC_PLUS_4)
+	# X for executing code, and ASR for csr[rw] and mret
+	li  t1, ~(__CHERI_CAP_PERMISSION_EXECUTE__ | __CHERI_CAP_PERMISSION_ACCESS_SYSTEM_REGISTERS__)
+	ypermc t0, t0, t1
+#else
+	# Restrict the trap handler's permissions
+	# Right now it only needs X
+	li  t1, ~(__CHERI_CAP_PERMISSION_EXECUTE__)
+	ypermc t0, t0, t1
+#endif
+#endif
 	csrw  mtvec, t0
 
 ###3 Setup PCC
