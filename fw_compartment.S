@@ -33,9 +33,7 @@
 #define STR_IMPL(x) #x
 #define STR(x) STR_IMPL(x)
 
-#define CSR_MSECCFG     0x747
 #define CSR_MIE         0x304
-#define MSECCFG_CRE     (1 << 3)
 
 .section .data
 .balign 64
@@ -70,9 +68,6 @@ read_var: .long 0xcbcbcbcb
 .section .entry, "ax", %progbits
 .globl _start
 _start:
-	/* Enable the capability instructions */
-	csrs CSR_MSECCFG, MSECCFG_CRE
-
 	/* Switch to capability mode */
 	ymodeswy
 
