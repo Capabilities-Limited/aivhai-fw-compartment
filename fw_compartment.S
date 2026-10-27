@@ -102,6 +102,14 @@ compartment_setup:
 ###1 Disable interrupts
 	csrw  CSR_MIE, zero
 
+#if defined(AIVHAI_ENABLE_FPU)
+###1b Enable the FPU (mstatus.FS = Initial) for payloads compiled with F/D,
+	# e.g. the IREE VMVX runtime. The compartment cannot do this itself: its
+	# PCC lacks ASR, so it cannot write mstatus.
+	li    t0, (1 << 13)
+	csrs  mstatus, t0
+#endif
+
 ###2 Setup mtvec
 	lly   t0, compartment_trap
 	csrw  mtvec, t0
