@@ -33,6 +33,13 @@
 #define STR_IMPL(x) #x
 #define STR(x) STR_IMPL(x)
 
+/* Alignment of the compartment's base and end. ybndsw (exact) clears the tag
+ * of a PCC whose bounds are not exactly representable, and large compartments
+ * need coarser alignment than the default (e.g. a ~2 GB payload). */
+#ifndef AIVHAI_COMPARTMENT_ALIGN
+#define AIVHAI_COMPARTMENT_ALIGN (1024*1024)
+#endif
+
 #define CSR_MSECCFG     0x747
 #define CSR_MIE         0x304
 #define MSECCFG_CRE     (1 << 3)
@@ -223,7 +230,7 @@ compartment_return:
 # Setting bounds that cannot be represented exactly may invalidate the
 # capability. The padding forms part of the compartment's authorised memory
 # and is not a protected asset.
-.balign 1024*1024
+.balign AIVHAI_COMPARTMENT_ALIGN
 .globl compartment_enter
 compartment_enter:
 #ifndef FW_COMPARTMENT_PATH
@@ -232,7 +239,7 @@ compartment_enter:
 #else
 	.incbin STR(FW_COMPARTMENT_PATH)
 #endif
-.balign 1024*1024
+.balign AIVHAI_COMPARTMENT_ALIGN
 compartment_end:
 .size compartment_enter, . -compartment_enter
 # -------------------- Compartmentalisation-related bits ---------------- #
