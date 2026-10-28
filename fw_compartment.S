@@ -119,6 +119,7 @@ compartment_trap:
 	ori   t0, t0, 1
 	lly   t1, tohost
 	sd    t0, 0(t1)
+	fence		# write the line back so the harness sees tohost (CVA6 D$)
 #endif
 	wfi
 	j compartment_trap
@@ -212,12 +213,25 @@ compartment_setup:
 	li t6, 0
 	csrw mscratch, c0
 	csrw mepc, c0
+#if defined(AIVHAI_CVA6_CHERI_CSRS)
+	# The CHERI-CVA6 RVY branch (6a4ee50) numbers its CHERI CSRs as an older
+	# draft did: ddc 0x03f, utid 0x07f, stid 0x17f, vstid 0x27f, mtid 0x37f,
+	# where the current spec (and the toolchain and QEMU) have ddc 0x416,
+	# utidc 0x480, stidc 0x580, vstidc 0xa80, mtidc 0x780.
+	csrw 0x37f, zero
+#else
 	csrw mtidc, c0
+#endif
 	csrw sepc, c0
 	csrw stvec, c0
 	csrw sscratch, c0
+#if defined(AIVHAI_CVA6_CHERI_CSRS)
+	csrw 0x17f, zero
+	csrw 0x07f, zero
+#else
 	csrw stidc, c0
 	csrw utidc, c0
+#endif
 
 	# XXX Other state could also be cleared, including FPU and vector
 	# registers and counters. This demo does not place sensitive information
@@ -227,7 +241,11 @@ compartment_setup:
 #endif
 
 #if !defined(AIVHAI_VULN_DDC)
+#if defined(AIVHAI_CVA6_CHERI_CSRS)
+	csrw 0x03f, zero
+#else
 	csrw ddc, c0
+#endif
 #endif
 
 	# XXX Side-channel and timing attacks are outside this demo's threat
@@ -252,6 +270,7 @@ compartment_return:
 	ori   t0, t0, 1
 	lly   t1, tohost
 	sd    t0, 0(t1)
+	fence		# write the line back so the harness sees tohost (CVA6 D$)
 #endif
 	wfi
 	j compartment_return
