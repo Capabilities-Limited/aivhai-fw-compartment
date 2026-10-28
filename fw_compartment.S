@@ -74,6 +74,16 @@ write_var: .long 0xcacacaca
 .globl read_var
 read_var: .long 0xcbcbcbcb
 
+## Size of the compartment, resolved by the assembler (both labels are in
+## .compartment_bits). Read in compartment_setup.
+.section .data
+.balign 8
+.globl compartment_size
+.type compartment_size, %object
+compartment_size:
+	.quad compartment_end - compartment_enter
+.size compartment_size, 8
+
 .section .entry, "ax", %progbits
 .globl _start
 _start:
@@ -127,8 +137,11 @@ compartment_setup:
 	ly     t0, 0(t0)
 
 	lly t2, compartment_enter
-	lly t1, compartment_end
-	sub t1, t1, t2
+	# The size comes from a constant next to the code rather than from
+	# compartment_end: PC-relative addressing only reaches +/-2 GiB, which
+	# would cap the compartment at about that size.
+	lly t1, compartment_size
+	ld  t1, 0(t1)
 
 	yaddrw t0, t0, t2
 #if defined(AIVHAI_VULN_BOUNDS)
