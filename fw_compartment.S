@@ -108,6 +108,18 @@ _start:
 .balign 4
 .globl compartment_trap
 compartment_trap:
+#if defined(AIVHAI_HTIF_EXIT)
+	# End the run through HTIF on any trap: exit code 0x400 | mcause, i.e.
+	# tohost = ((0x400 | mcause) << 1) | 1, so a simulator exits with a code
+	# that names the cause instead of hanging.
+	csrr  t0, mcause
+	andi  t0, t0, 0x3ff
+	ori   t0, t0, 0x400
+	slli  t0, t0, 1
+	ori   t0, t0, 1
+	lly   t1, tohost
+	sd    t0, 0(t1)
+#endif
 	wfi
 	j compartment_trap
 ######################################################################### #
@@ -233,6 +245,14 @@ compartment_setup:
 
 ###6 Compartment return without exceptions
 compartment_return:
+#if defined(AIVHAI_HTIF_EXIT)
+	# Report the compartment's return value (a0) through HTIF:
+	# tohost = (a0 << 1) | 1, the riscv-tests convention (0 = pass).
+	slli  t0, a0, 1
+	ori   t0, t0, 1
+	lly   t1, tohost
+	sd    t0, 0(t1)
+#endif
 	wfi
 	j compartment_return
 
